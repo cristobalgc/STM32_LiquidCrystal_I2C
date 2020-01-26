@@ -44,7 +44,9 @@
 #define LCD_DELAY500 (500u)//500ms
 #define LCD_DELAY5 (5u)//5ms
 #define LCD_IICTIMEOUT (100u)
-
+#define LCD_4BYTESSIZE (4u)
+#define LCD_2BYTESSIZE (2u)
+#define LCD_1BYTESIZE (1u)
 /******************************************************************************/
 /*                  Definition of local function like macros                  */
 /******************************************************************************/
@@ -74,19 +76,39 @@
 /******************************************************************************/
 
 static char* lcd_convert(unsigned int, int);       //Convert integer number into octal, hex, etc.
-static void lcd_pcf8574Write(LCD_t *lcd, char data);
-static void lcd_pcf8574Send(LCD_t *lcd, char data, uint8_t rsbit);
+static uint8_t lcd_pcf8574Write(LCD_t *lcd, uint8_t *data);
+static uint8_t lcd_pcf8574Send(LCD_t *lcd, char data, uint8_t rsbit);
 
 /******************************************************************************/
 /*                       Definition of local functions                        */
 /******************************************************************************/
 /*
  * @brief Write directly on the iic expander
- * @param[in]: uint8_t data - The data to write
+ * @param[in]: uint8_t *data - The data to write
  */
-static void lcd_pcf8574Write(LCD_t *lcd, char data)
+static uint8_t lcd_pcf8574Write(LCD_t *lcd, uint8_t *data)
 {
-	HAL_I2C_Master_Transmit (lcd->Config.hi2c, lcd->Config._Addr, (uint8_t *) &data, 1u, LCD_IICTIMEOUT);
+	uint8_t ret = 1u;
+	/* Choose your preferences if you want to use DMA or not in .h file */
+#ifdef LCD_I2C_USE_IT_TRANSFER
+	if(HAL_I2C_Master_Transmit_IT(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t *)data, LCD_1BYTESIZE) != HAL_OK)
+	{
+		ret = 0u;
+	}
+#endif
+#ifdef LCD_I2C_USE_BLOCK_TRANSFER
+	if(HAL_I2C_Master_Transmit(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t *)data, LCD_1BYTESIZE, LCD_IICTIMEOUT) != HAL_OK)
+	{
+		ret = 0u;
+	}
+#endif
+#ifdef LCD_I2C_USE_DMA_TRANSFER
+	if(HAL_I2C_Master_Transmit_DMA(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t *)data, LCD_1BYTESIZE)!= HAL_OK)
+	{
+		ret = 0u;
+	}
+#endif
+	return ret;
 }
 
 /*
@@ -102,8 +124,9 @@ static void lcd_pcf8574Write(LCD_t *lcd, char data)
  * DB7 DB6 DB5 DB4 | DB3 DB2 DB1 DB0
  *
  * */
-static void lcd_pcf8574Send(LCD_t *lcd, char data, uint8_t rsbit)
+static uint8_t lcd_pcf8574Send(LCD_t *lcd, char data, uint8_t rsbit)
 {
+	uint8_t ret = 1u ;
 	uint8_t data_t[4];
 	uint8_t lownibble;
 	uint8_t highnibble;
@@ -123,12 +146,31 @@ static void lcd_pcf8574Send(LCD_t *lcd, char data, uint8_t rsbit)
 	data_t[2] = lcd->Data.Register.R;
 	lcd->Data.Register.B.EN = 0u;
 	data_t[3] = lcd->Data.Register.R;
-	HAL_I2C_Master_Transmit (lcd->Config.hi2c, lcd->Config._Addr, (uint8_t *)data_t, sizeof(data_t), 100);
 
+	/* Choose your preferences if you want to use DMA or not in .h file */
+#ifdef LCD_I2C_USE_IT_TRANSFER
+	if(HAL_I2C_Master_Transmit_IT(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t *)data_t, LCD_4BYTESSIZE) != HAL_OK)
+	{
+		ret = 0u;
+	}
+#endif
+#ifdef LCD_I2C_USE_BLOCK_TRANSFER
+	if(HAL_I2C_Master_Transmit(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t *)data_t, LCD_4BYTESSIZE, LCD_IICTIMEOUT) != HAL_OK)
+	{
+		ret = 0u;
+	}
+#endif
+#ifdef LCD_I2C_USE_DMA_TRANSFER
+	if(HAL_I2C_Master_Transmit_DMA(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t *)data_t, LCD_4BYTESSIZE)!=HAL_OK)
+	{
+		ret = 0u;
+	}
+#endif
 	while (HAL_I2C_GetState(lcd->Config.hi2c) != HAL_I2C_STATE_READY)
 	{
-		HAL_Delay(LCD_DELAY1);
+		__NOP();
     }
+	return ret;
 }
 
 /**
@@ -169,11 +211,11 @@ static char *lcd_convert(unsigned int num, int base)
  * @param[in]: LCD_t *lcd - The lcd to set the config parameters
  * @param[in]: LCD_cfg_t *config - The configuration of the LCD
  */
-void LCD_init(LCD_t * lcd, const LCD_cfg_t *config)
+uint8_t LCD_init(LCD_t * lcd, const LCD_cfg_t *config)
 {
 	uint8_t i;
-	uint8_t ret;
-	uint8_t initcmdbuffer[3] = {0u};
+	uint8_t ret = 1u;
+	uint8_t initcmdbuffer[LCD_2BYTESSIZE] = {0u};
 	memcpy(&lcd->Config, config, sizeof(LCD_cfg_t));
 	lcd->Data.Register.R = 0u;
 	lcd->Data._backlightval = 0u;
@@ -199,7 +241,7 @@ void LCD_init(LCD_t * lcd, const LCD_cfg_t *config)
 	HAL_Delay(LCD_DELAY50);
 
 	// Now we pull both RS and R/W low to begin commands
-	lcd_pcf8574Write(lcd,lcd->Data._backlightval);	// reset expanderand turn backlight off (Bit 8 =1)
+	lcd_pcf8574Write(lcd, &lcd->Data._backlightval);	// reset expanderand turn backlight off (Bit 8 =1)
 
 	HAL_Delay(LCD_DELAY500);
 
@@ -212,15 +254,30 @@ void LCD_init(LCD_t * lcd, const LCD_cfg_t *config)
 
 	for(i = 0u; i<3; i++) //sending 3 times: select 4-bit mode
 	{
-		if (HAL_I2C_Master_Transmit(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t*)initcmdbuffer, sizeof(initcmdbuffer),LCD_IICTIMEOUT))
+#ifdef LCD_I2C_USE_IT_TRANSFER
+		if (HAL_I2C_Master_Transmit_IT(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t*)initcmdbuffer, LCD_2BYTESSIZE)!= HAL_OK)
 		{
 			ret = 0u;
 			break;
 		}
-
+#endif
+#ifdef LCD_I2C_USE_BLOCK_TRANSFER
+		if(HAL_I2C_Master_Transmit(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t*)initcmdbuffer, LCD_2BYTESSIZE, LCD_IICTIMEOUT) != HAL_OK)
+		{
+			ret = 0u;
+			break;
+		}
+#endif
+#ifdef LCD_I2C_USE_DMA_TRANSFER
+		if (HAL_I2C_Master_Transmit_DMA(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t*)initcmdbuffer, LCD_2BYTESSIZE)!= HAL_OK)
+		{
+			ret = 0u;
+			break;
+		}
+#endif
         while (HAL_I2C_GetState(lcd->Config.hi2c) != HAL_I2C_STATE_READY)
         {
-        	HAL_Delay(LCD_DELAY1);
+        	__NOP();
         }
 		if (i == 2)
 		{
@@ -237,19 +294,31 @@ void LCD_init(LCD_t * lcd, const LCD_cfg_t *config)
     /* finally, set to 4-bit interface */
 	initcmdbuffer[0] = LCD_BIT_E | (LCD_MODE_4BITS << 4);
 	initcmdbuffer[1] = (LCD_MODE_4BITS << 4);
-
-    if (HAL_I2C_Master_Transmit(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t*)initcmdbuffer, sizeof(initcmdbuffer),LCD_IICTIMEOUT) != HAL_OK)
-    {
-    	ret = 0u;
-    }
-
+#ifdef LCD_I2C_USE_IT_TRANSFER
+	if (HAL_I2C_Master_Transmit_IT(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t*)initcmdbuffer, LCD_2BYTESSIZE) != HAL_OK)
+	{
+		ret = 0u;
+	}
+#endif
+#ifdef LCD_I2C_USE_BLOCK_TRANSFER
+	if(HAL_I2C_Master_Transmit(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t*)initcmdbuffer, LCD_2BYTESSIZE, LCD_IICTIMEOUT) != HAL_OK)
+	{
+		ret = 0u;
+	}
+#endif
+#ifdef LCD_I2C_USE_DMA_TRANSFER
+	if (HAL_I2C_Master_Transmit_DMA(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t*)initcmdbuffer, LCD_2BYTESSIZE) != HAL_OK)
+	{
+		ret = 0u;
+	}
+#endif
     while (HAL_I2C_GetState(lcd->Config.hi2c) != HAL_I2C_STATE_READY)
     {
-    	HAL_Delay(LCD_DELAY1);
+    	__NOP();
     }
 
 	// set # lines, font size, etc.
-	lcd_pcf8574Send(lcd, LCD_FUNCTIONSET | lcd->Data._displayfunction, WRITECMD);
+	ret = lcd_pcf8574Send(lcd, LCD_FUNCTIONSET | lcd->Data._displayfunction, WRITECMD);
 
 	// turn the display on with no cursor or blinking default
 	lcd->Data._displaycontrol = LCD_DISPLAYON | LCD_CURSOROFF | LCD_BLINKOFF;
@@ -262,9 +331,11 @@ void LCD_init(LCD_t * lcd, const LCD_cfg_t *config)
 	lcd->Data._displaymode = LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT;
 
 	// set the entry mode
-	lcd_pcf8574Send(lcd, LCD_ENTRYMODESET | lcd->Data._displaymode, WRITECMD);
+	ret = lcd_pcf8574Send(lcd, LCD_ENTRYMODESET | lcd->Data._displaymode, WRITECMD);
 
 	LCD_home(lcd);
+
+	return ret;
 }
 
 /*
@@ -463,23 +534,25 @@ void LCD_createChar(LCD_t *lcd, uint8_t location, uint8_t charmap[])
 }
 
 /*
- * @brief Set the Backlight ON
+ * @brief Set the Backlight
  * @param[in]: LCD_t *lcd - The lcd to set the backlight
+ * @param[in]: uint8_t backlight - 1 turn ON- 0 turn OFF
+ * @return 1 if OK - 0 if not ok
  */
-void LCD_setBacklightOn(LCD_t *lcd)
+uint8_t LCD_setBacklight(LCD_t *lcd, uint8_t backlight)
 {
-	lcd->Data._backlightval = LCD_BACKLIGHT;
-	lcd->Data.Register.B.BCKLGHT = lcd->Data._backlightval;
-	HAL_I2C_Master_Transmit (lcd->Config.hi2c, lcd->Config._Addr, (uint8_t *) &lcd->Data.Register, sizeof(LCD_reg_t), LCD_IICTIMEOUT);
-}
+	uint8_t ret;
 
-/*
- * @brief Set the Backlight OFF
- * @param[in]: LCD_t *lcd - The lcd to set the backlight
- */
-void LCD_setBacklightOff(LCD_t *lcd)
-{
-	lcd->Data._backlightval = LCD_NOBACKLIGHT;
-	lcd->Data.Register.B.BCKLGHT = lcd->Data._backlightval;
-	HAL_I2C_Master_Transmit (lcd->Config.hi2c, lcd->Config._Addr, (uint8_t *) &lcd->Data.Register, sizeof(LCD_reg_t), LCD_IICTIMEOUT);
+	if(backlight <= 1u)
+	{
+		lcd->Data._backlightval = backlight;
+		lcd->Data.Register.B.BCKLGHT = lcd->Data._backlightval;
+		ret = lcd_pcf8574Write(lcd, &lcd->Data.Register.R);
+	}
+	else
+	{
+		ret = 0u;
+	}
+
+	return ret;
 }

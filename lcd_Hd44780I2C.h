@@ -10,6 +10,11 @@
 
 #include "stm32f1xx_hal.h"
 
+//options
+//#define LCD_I2C_USE_DMA_TRANSFER
+#define LCD_I2C_USE_IT_TRANSFER
+//#define LCD_I2C_USE_BLOCK_TRANSFER
+
 // commands
 #define LCD_CLEARDISPLAY ((uint8_t)0x01U)
 #define LCD_RETURNHOME ((uint8_t)0x02U)
@@ -107,7 +112,7 @@ typedef  struct LCD_s
 	LCD_data_t Data;
 }LCD_t;
 
-extern void LCD_init(LCD_t * lcd, const LCD_cfg_t *config);
+extern uint8_t LCD_init(LCD_t * lcd, const LCD_cfg_t *config);
 extern void LCD_clear(LCD_t *lcd);
 extern void LCD_home(LCD_t *lcd);
 extern void LCD_setCursor(LCD_t *lcd, uint8_t col, uint8_t row);
@@ -123,8 +128,7 @@ extern void LCD_leftToRight(LCD_t *lcd);
 extern void LCD_rightToLeft(LCD_t *lcd);
 extern void LCD_autoscroll(LCD_t *lcd);
 extern void LCD_noAutoscroll(LCD_t *lcd);
-extern void LCD_setBacklightOn(LCD_t *lcd);
-extern void LCD_setBacklightOff(LCD_t *lcd);
+extern uint8_t LCD_setBacklight(LCD_t *lcd, uint8_t backlight);
 extern void LCD_createChar(LCD_t *lcd, uint8_t location, uint8_t charmap[]);
 extern void LCD_printStr(LCD_t *lcd, char* data);
 extern void LCD_print(LCD_t * lcd, char* format,...);
