@@ -145,14 +145,28 @@ static void lcd_pulseenable(LCD_t *lcd, uint8_t data)
 static lcd_error_t lcd_expanderWriteN(LCD_t *lcd, uint8_t *data, uint16_t size)
 {
 	lcd_error_t ret = LCD_OK;
-	uint16_t i = 0u;
-	for(i=0;i<size;i++)
+	/* Choose your preferences if you want to use DMA or not in .h file */
+#ifdef LCD_I2C_USE_IT_TRANSFER
+	if(HAL_I2C_Master_Transmit_IT(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t *)data, size) != HAL_OK)
 	{
-		if(!lcd_expanderWrite(lcd, *data))
-		{
-			ret = LCD_NOK;
-			break;
-		}
+		ret = LCD_NOK;
+	}
+#endif
+#ifdef LCD_I2C_USE_BLOCK_TRANSFER
+	if(HAL_I2C_Master_Transmit(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t *)data, size, LCD_IICTIMEOUT) != HAL_OK)
+	{
+		ret = LCD_NOK;
+	}
+#endif
+#ifdef LCD_I2C_USE_DMA_TRANSFER
+	if(HAL_I2C_Master_Transmit_DMA(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t *)data, size)!= HAL_OK)
+	{
+		ret = LCD_NOK;
+	}
+#endif
+	while (HAL_I2C_GetState(lcd->Config.hi2c) != HAL_I2C_STATE_READY)
+	{
+		__NOP();
 	}
 	return ret;
 }
