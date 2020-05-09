@@ -1,0 +1,527 @@
+/******************************************************************************/
+/*   All rights reserved. Distribution or duplication without previous        */
+/*   written agreement of the owner prohibited.                               */
+/*                                                                            */
+/******************************************************************************/
+
+/** \file lcd_Hd44780_I2c.c
+ *
+ * \brief Source code file for lcd_Hd44780_I2c
+ *
+ * <table border="0" cellspacing="0" cellpadding="0">
+ * <tr> <td> Author:   </td> <td>  CGC   </td></tr>
+ * <tr> <td> Date:     </td> <td> 25 oct. 2019           </td></tr>
+ * </table>
+ * \n
+ * <table border="0" cellspacing="0" cellpadding="0">
+ * <tr> <td> COMPONENT: </td> <td> lcd_Hd44780_I2c   </td></tr>
+ * <tr> <td> TARGET:    </td> <td> STM32F103C8T6    </td></tr>
+ * </table>
+ */
+
+/******************************************************************************/
+/*                Include common and project definition header                */
+/******************************************************************************/
+
+/******************************************************************************/
+/*                      Include headers of the component                      */
+/******************************************************************************/
+#include <lcd_Hd44780I2C.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
+/******************************************************************************/
+/*                            Include other headers                           */
+/******************************************************************************/
+
+/******************************************************************************/
+/*                   Definition of local symbolic constants                   */
+/******************************************************************************/
+
+#define LCD_DELAY2000 (2000u)
+#define LCD_DELAY1 (1u)
+#define LCD_DELAY50 (50u)
+#define LCD_DELAY500 (500u)
+#define LCD_DELAY4500 (4500u)
+#define LCD_DELAY150 (150u)
+#define LCD_IICTIMEOUT (100u)
+#define LCD_1BYTESIZE (1u)
+/******************************************************************************/
+/*                  Definition of local function like macros                  */
+/******************************************************************************/
+
+/******************************************************************************/
+/*          Definition of local types (typedef, enum, struct, union)          */
+/******************************************************************************/
+
+/******************************************************************************/
+/*                       Definition of local variables                        */
+/******************************************************************************/
+
+/******************************************************************************/
+/*                     Definition of local constant data                      */
+/******************************************************************************/
+
+/******************************************************************************/
+/*                      Definition of exported variables                      */
+/******************************************************************************/
+
+/******************************************************************************/
+/*                    Definition of exported constant data                    */
+/******************************************************************************/
+
+/******************************************************************************/
+/*                  Declaration of local function prototypes                  */
+/******************************************************************************/
+static void lcd_delay_ms(uint32_t ms);
+static void lcd_delay_Mc(uint32_t mc);
+static char* lcd_convert(unsigned int, int);       //Convert integer number into octal, hex, etc.
+static lcd_error_t lcd_expanderWrite(LCD_t *lcd, uint8_t data);
+static void lcd_send(LCD_t *lcd, uint8_t value, uint8_t mode);
+static void lcd_write4bits(LCD_t *lcd, uint8_t value);
+static void lcd_pulseenable(LCD_t *lcd, uint8_t data);
+
+/******************************************************************************/
+/*                       Definition of local functions                        */
+/******************************************************************************/
+/**
+ * @brief  Apply a delay about some milliseconds.
+ * @note
+ * @param[in]: uint32_t ms - Number of milliseconds to wait
+ * @return  none
+ */
+void lcd_delay_ms(uint32_t ms)
+{
+        volatile uint32_t nCount;
+        uint32_t HCLK_Frequency;
+        HCLK_Frequency = HAL_RCC_GetHCLKFreq();
+        nCount=(HCLK_Frequency/10000)*ms;
+        for (; nCount!=0; nCount--);
+}
+
+/**
+ * @brief  Apply a delay about some microseconds.
+ * @note
+ * @param[in]: uint32_t mc - Number of microseconds to wait
+ * @return  none
+ */
+void lcd_delay_Mc(uint32_t mc)
+{
+        volatile uint32_t nCount;
+        uint32_t HCLK_Frequency;
+        HCLK_Frequency = HAL_RCC_GetHCLKFreq();
+        nCount=(HCLK_Frequency/10000000)*mc;
+        for (; nCount!=0; nCount--);
+}
+
+/**
+ * @brief  Write a byte in the pcf8574 I2C expander.
+ * @note
+ * @param[in]: LCD_t *lcd - The lcd object to set the configuration parameters
+ * @param[in]:  uint8_t data - The data to write .
+ * @return  lcd_error_t
+ */
+static lcd_error_t lcd_expanderWrite(LCD_t *lcd, uint8_t data)
+{
+	lcd_error_t ret = LCD_OK;
+	data = data | (lcd->Data._Register & 0x08);
+	/* Choose your preferences if you want to use DMA or not in .h file */
+#ifdef LCD_I2C_USE_IT_TRANSFER
+	if(HAL_I2C_Master_Transmit_IT(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t *)&data, LCD_1BYTESIZE) != HAL_OK)
+	{
+		ret = LCD_NOK;
+	}
+#endif
+#ifdef LCD_I2C_USE_BLOCK_TRANSFER
+	if(HAL_I2C_Master_Transmit(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t *)&data, LCD_1BYTESIZE, LCD_IICTIMEOUT) != HAL_OK)
+	{
+		ret = LCD_NOK;
+	}
+#endif
+#ifdef LCD_I2C_USE_DMA_TRANSFER
+	if(HAL_I2C_Master_Transmit_DMA(lcd->Config.hi2c, lcd->Config._Addr, (uint8_t *)&data, LCD_1BYTESIZE)!= HAL_OK)
+	{
+		ret = LCD_NOK;
+	}
+#endif
+	while (HAL_I2C_GetState(lcd->Config.hi2c) != HAL_I2C_STATE_READY)
+	{
+		__NOP();
+	}
+	return ret;
+}
+
+/**
+ * @brief  write either command or data.
+ * @note
+ * @param[in]: LCD_t *lcd - The lcd object to set the configuration parameters
+ * @param[in]:  uint8_t value
+ * @param[in]:  uint8_t mode - 1 to write 0 to send a command.
+ * @return  none
+ */
+static void lcd_send(LCD_t *lcd, uint8_t value, uint8_t mode)
+{
+	uint8_t highnib=value&0xf0;
+	uint8_t lownib=(value<<4)&0xf0;
+	lcd_write4bits(lcd,(highnib)|mode);
+	lcd_write4bits(lcd,(lownib)|mode);
+}
+
+/**
+ * @brief  Convert integer numbers in to a string to be represented in the LCD.
+ * @note
+ * @param[in]: LCD_t *lcd - The lcd object to set the configuration parameters
+ * @param[in]:  uint8_t value -  The value to send to the I2c expander
+ * @return  none
+ */
+static void lcd_write4bits(LCD_t *lcd, uint8_t value)
+{
+	(void)lcd_expanderWrite(lcd, value);
+	lcd_pulseenable(lcd, value);
+}
+
+/**
+ * @brief  Convert integer numbers in to a string to be represented in the LCD.
+ * @note
+ * @param[in]: LCD_t *lcd - The lcd object to set the configuration parameters
+ * @param[in]: uint8_t data -
+ * @return  none
+ */
+static void lcd_pulseenable(LCD_t *lcd, uint8_t data)
+{
+	(void)lcd_expanderWrite(lcd,data | LCD_BIT_E);
+	lcd_delay_Mc(LCD_DELAY1);
+
+	(void)lcd_expanderWrite(lcd,data & ~LCD_BIT_E);
+	lcd_delay_Mc(LCD_DELAY50);
+}
+
+/**
+ * @brief  Convert integer numbers in to a string to be represented in the LCD.
+ * @note
+ * @param[in]  num    	The number to convert
+ * @param[in]  base   	The base to convert the number.
+ * 					use 10 as base parameter to convert the number in to a decimal value,
+ * 					16 to convert it in hexadecimal value and 8 to convert the number in octal.
+ * @return  none
+ */
+static char *lcd_convert(unsigned int num, int base)
+{
+	static char Representation[]= "0123456789ABCDEF";
+	static char buffer[50];
+	char *ptr;
+
+	ptr = &buffer[49];
+	*ptr = '\0';
+
+	do
+	{
+		*--ptr = Representation[num%base];
+		num /= base;
+	}while(num != 0u);
+
+	return(ptr);
+}
+
+/******************************************************************************/
+/*                      Definition of exported functions                      */
+/******************************************************************************/
+
+/********** high level commands, for the user! */
+/*
+ * @brief Initilalize the variables for the LCD.
+ *
+ * @param[in]: LCD_t *lcd - The lcd to set the config parameters
+ * @param[in]: LCD_cfg_t *config - The configuration of the LCD
+ */
+lcd_error_t LCD_init(LCD_t * lcd, const LCD_cfg_t *config)
+{
+	uint8_t ret = LCD_OK;
+	memcpy(&lcd->Config, config, sizeof(LCD_cfg_t));
+	lcd->Data._Register = 0u;
+	lcd->Data._backlightval = 0u;
+	lcd->Data._displaycontrol = 0u;
+	lcd->Data._displaymode = 0u;
+	lcd->Data._invertBigFont = 0u;
+
+	lcd->Data._displayfunction = LCD_4BITMODE | LCD_1LINE | LCD_5x8DOTS;
+
+	if (lcd->Config._rows > 1u)
+	{
+		lcd->Data._displayfunction = LCD_2LINE;
+	}
+
+	// for some 1 line displays you can select a 10 pixel high font
+	if ((lcd->Config._dotSize != 0u) && (lcd->Config._rows == 1u))
+	{
+		lcd->Data._displayfunction |= LCD_5x10DOTS;
+	}
+	// SEE PAGE 45/46 FOR INITIALIZATION SPECIFICATION!
+	// according to datasheet, we need at least 40ms after power rises above 2.7V
+	// before sending commands. Arduino can turn on way befer 4.5V so we'll wait 50
+	lcd_delay_ms(LCD_DELAY50);
+
+	// Now we pull both RS and R/W low to begin commands
+	(void)lcd_expanderWrite(lcd, lcd->Data._backlightval);
+	lcd_delay_ms(LCD_DELAY500);
+
+	//put the LCD into 4 bit mode
+	// this is according to the hitachi HD44780 datasheet
+	// figure 24, pg 46
+
+	  lcd_write4bits(lcd, 0x03 << 4);
+	  lcd_delay_Mc(LCD_DELAY4500);
+
+	  lcd_write4bits(lcd, 0x03 << 4);
+	  lcd_delay_Mc(LCD_DELAY4500);
+
+	  lcd_write4bits(lcd, 0x03 << 4);
+	  lcd_delay_Mc(LCD_DELAY150);
+
+	  lcd_write4bits(lcd, 0x02 << 4);
+
+	// set # lines, font size, etc.
+	  lcd_send(lcd, LCD_FUNCTIONSET | lcd->Data._displayfunction, WRITECMD);
+
+	// turn the display on with no cursor or blinking default
+	lcd->Data._displaycontrol = LCD_DISPLAYON | LCD_CURSOROFF | LCD_BLINKOFF;
+	LCD_display(lcd);
+
+	// clear it off
+	LCD_clear(lcd);
+
+	// Initialize to default text direction (for roman languages)
+	lcd->Data._displaymode = LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT;
+
+	// set the entry mode
+	lcd_send(lcd, LCD_ENTRYMODESET | lcd->Data._displaymode, WRITECMD);
+
+	LCD_home(lcd);
+
+	return ret;
+}
+
+/*
+ * @brief Print the a string in the LCD.
+ *
+ * @param[in]: LCD_t *lcd - The lcd object to use.
+ * @param[in]: char* data - The data string to be printed on the LCD.
+ */
+void LCD_printStr(LCD_t *lcd, char* data)
+{
+	while(*data)
+	{
+		lcd_send(lcd, *data++, WRITEDATA);
+	}
+}
+
+void LCD_write(LCD_t *lcd, uint8_t data)
+{
+	lcd_send(lcd, data, WRITEDATA);
+}
+
+/*
+ * @brief Print function to be used like printf.
+ *
+ * @param[in]: LCD_t *lcd - The lcd object to use.
+ * @param[in]: char* format - The data string to be printed on the LCD.
+ */
+
+void LCD_print(LCD_t * lcd, char* format,...)
+{
+	char *traverse;
+	int32_t i;
+	char *s;
+
+	//Module 1: Initializing Myprintf's arguments
+	va_list arg;
+	va_start(arg, format);
+
+	for(traverse = format; *traverse != '\0'; traverse++)
+	{
+		while( *traverse != '%' && *traverse != '\0' )
+		{
+			lcd_send(lcd, *traverse, WRITEDATA);
+			traverse++;
+		}
+
+		traverse++;
+
+		//Module 2: Fetching and executing arguments
+		switch(*traverse)
+		{
+		case 'c' :
+			i = va_arg(arg,int);		//Fetch char argument
+			lcd_send(lcd,i,WRITEDATA);
+			break;
+
+		case 'd' :
+			i = va_arg(arg,int);         //Fetch Decimal/Integer argument
+			if(i < 0u)
+			{
+				i = -i;
+				lcd_send(lcd, 45, WRITEDATA);	// 45 is "-" symbol
+			}
+			LCD_printStr(lcd,lcd_convert(i, 10u));
+			break;
+
+		case 'o':
+			i = va_arg(arg,unsigned int); //Fetch Octal representation
+			LCD_printStr(lcd,lcd_convert(i, 8u));
+			break;
+
+		case 's':
+			s = va_arg(arg,char *);       //Fetch string
+			LCD_printStr(lcd,s);
+			break;
+
+		case 'x':
+			i = va_arg(arg,unsigned int); //Fetch Hexadecimal representation
+			LCD_printStr(lcd,lcd_convert(i, 16u));
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+void LCD_clear(LCD_t *lcd)
+{
+	lcd_send(lcd, LCD_CLEARDISPLAY, WRITECMD);// clear display, set cursor position to zero
+	lcd_delay_Mc(LCD_DELAY2000); // this command takes a long time!
+}
+
+void LCD_home(LCD_t *lcd)
+{
+	lcd_send(lcd, LCD_RETURNHOME, WRITECMD);  // set cursor position to zero
+	lcd_delay_Mc(LCD_DELAY2000); // this command takes a long time!
+}
+
+void LCD_setCursor(LCD_t *lcd, uint8_t col, uint8_t row)
+{
+	int row_offsets[] = { 0x00, 0x40, 0x14, 0x54 };
+	if ( row > lcd->Config._rows )
+	{
+		row = lcd->Config._rows - 1u;    // we count rows starting w/0
+	}
+	lcd_send(lcd, LCD_SETDDRAMADDR | (col + row_offsets[row]), WRITECMD);
+}
+
+// Turn the display on/off (quickly)
+void LCD_noDisplay(LCD_t *lcd)
+{
+	lcd->Data._displaycontrol &= ~LCD_DISPLAYON;
+	lcd_send(lcd,LCD_DISPLAYCONTROL | lcd->Data._displaycontrol, WRITECMD);
+}
+void LCD_display(LCD_t *lcd)
+{
+	lcd->Data._displaycontrol |= LCD_DISPLAYON;
+	lcd_send(lcd,LCD_DISPLAYCONTROL | lcd->Data._displaycontrol, WRITECMD);
+}
+
+// Turns the underline cursor on/off
+void LCD_noCursor(LCD_t *lcd)
+{
+	lcd->Data._displaycontrol &= ~LCD_CURSORON;
+	lcd_send(lcd,LCD_DISPLAYCONTROL | lcd->Data._displaycontrol, WRITECMD);
+}
+void LCD_cursor(LCD_t *lcd)
+{
+	lcd->Data._displaycontrol |= LCD_CURSORON;
+	lcd_send(lcd, LCD_DISPLAYCONTROL | lcd->Data._displaycontrol, WRITECMD);
+}
+
+// Turn on and off the blinking cursor
+void LCD_noBlink(LCD_t *lcd)
+{
+	lcd->Data._displaycontrol &= ~LCD_BLINKON;
+	lcd_send(lcd, LCD_DISPLAYCONTROL | lcd->Data._displaycontrol, WRITECMD);
+}
+void LCD_blink(LCD_t *lcd)
+{
+	lcd->Data._displaycontrol |= LCD_BLINKON;
+	lcd_send(lcd, LCD_DISPLAYCONTROL | lcd->Data._displaycontrol, WRITECMD);
+}
+
+// These commands scroll the display without changing the RAM
+void LCD_scrollDisplayLeft(LCD_t *lcd)
+{
+	lcd_send(lcd,LCD_CURSORSHIFT | LCD_DISPLAYMOVE | LCD_MOVELEFT, WRITECMD);
+}
+void LCD_scrollDisplayRight(LCD_t *lcd)
+{
+	lcd_send(lcd, LCD_CURSORSHIFT | LCD_DISPLAYMOVE | LCD_MOVERIGHT, WRITECMD);
+}
+
+// This is for text that flows Left to Right
+void LCD_leftToRight(LCD_t *lcd)
+{
+	lcd->Data._displaymode |= LCD_ENTRYLEFT;
+	lcd_send(lcd, LCD_ENTRYMODESET | lcd->Data._displaymode, WRITECMD);
+}
+
+// This is for text that flows Right to Left
+void LCD_rightToLeft(LCD_t *lcd)
+{
+	lcd->Data._displaymode &= ~LCD_ENTRYLEFT;
+	lcd_send(lcd, LCD_ENTRYMODESET | lcd->Data._displaymode, WRITECMD);
+}
+
+// This will 'right justify' text from the cursor
+void LCD_autoscroll(LCD_t *lcd)
+{
+	lcd->Data._displaymode |= LCD_ENTRYSHIFTINCREMENT;
+	lcd_send(lcd, LCD_ENTRYMODESET | lcd->Data._displaymode, WRITECMD);
+}
+
+// This will 'left justify' text from the cursor
+void LCD_noAutoscroll(LCD_t *lcd)
+{
+	lcd->Data._displaymode &= ~LCD_ENTRYSHIFTINCREMENT;
+	lcd_send(lcd, LCD_ENTRYMODESET | lcd->Data._displaymode, WRITECMD);
+}
+
+// Allows us to fill the first 8 CGRAM locations
+// with custom characters///(maybe it does not work)
+void LCD_createChar(LCD_t *lcd, uint8_t location, uint8_t charmap[])
+{
+	int i;
+	location &= 0x07u; // we only have 8 locations 0-7
+	lcd_send(lcd, LCD_SETCGRAMADDR | (location << 3u), WRITECMD);
+	for (i = 0u; i<8u; i++)
+	{
+		lcd_send(lcd, charmap[i], WRITEDATA);
+	}
+}
+
+/*
+ * @brief Set the Backlight
+ * @param[in]: LCD_t *lcd - The lcd to set the backlight
+ * @param[in]: uint8_t backlight - 1 turn ON- 0 turn OFF
+ * @return 1 if OK - 0 if not ok
+ */
+lcd_error_t LCD_setBacklight(LCD_t *lcd, uint8_t backlight)
+{
+	uint8_t ret;
+
+	if(backlight <= 1u)
+	{
+		lcd->Data._backlightval = backlight;
+		if(backlight)
+		{
+			LCD_REGBITSET(lcd->Data._Register, LCD_PIN_BACKLIGHT);
+			ret = lcd_expanderWrite(lcd, lcd->Data._Register);
+		}
+		else
+		{
+			LCD_REGBITCLEAR(lcd->Data._Register, LCD_PIN_BACKLIGHT);
+			ret = lcd_expanderWrite(lcd, lcd->Data._Register);
+		}
+	}
+	else
+	{
+		ret = LCD_NOK;
+	}
+
+	return ret;
+}
