@@ -497,6 +497,7 @@ void LCD_blink(LCD_t *lcd)
 {
 	lcd->Data._displaycontrol |= LCD_BLINKON;
 	lcd_send(lcd, LCD_DISPLAYCONTROL | lcd->Data._displaycontrol, WRITECMD);
+
 }
 
 // These commands scroll the display without changing the RAM
