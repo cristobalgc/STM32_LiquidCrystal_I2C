@@ -134,7 +134,7 @@ extern void LCD_rightToLeft(LCD_t *lcd);
 extern void LCD_autoscroll(LCD_t *lcd);
 extern void LCD_noAutoscroll(LCD_t *lcd);
 extern lcd_error_t LCD_setBacklight(LCD_t *lcd, uint8_t backlight);
-extern void LCD_createChar(LCD_t *lcd, uint8_t location, uint8_t charmap[]);
+extern void LCD_createChar(LCD_t *lcd, uint8_t location, const char *charmap);
 extern void LCD_printStr(LCD_t *lcd, char* data);
 extern void LCD_print(LCD_t * lcd, char* format,...);
 extern void LCD_write(LCD_t *lcd, uint8_t data);

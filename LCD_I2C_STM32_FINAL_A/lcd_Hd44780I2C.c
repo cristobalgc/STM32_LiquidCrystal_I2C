@@ -332,6 +332,7 @@ void LCD_print(LCD_t * lcd, char* format,...)
 	char *traverse;
 	int32_t i;
 	char *s;
+	uint8_t go_out = 0u;
 
 	//Module 1: Initializing Myprintf's arguments
 	va_list arg;
@@ -380,8 +381,10 @@ void LCD_print(LCD_t * lcd, char* format,...)
 			LCD_printStr(lcd,lcd_convert(i, 16u));
 			break;
 		default:
+			go_out = 1u;
 			break;
 		}
+		if(go_out){break;}
 	}
 }
 
