@@ -2,21 +2,39 @@
 
 ![HD44780 LCD Display](Images/LCD_20x4_16x2.png)
 
-This repository provides a C library to interface HD44780-based LCD displays over I2C using STM32 microcontrollers with the HAL library. By utilizing an I/O expander like the PCF8574, this driver minimizes GPIO usage, facilitating efficient LCD control.
+> **📦 Description:** A robust and efficient STM32 HAL driver for HD44780-based LCDs over I2C using a PCF8574 expander. This project provides support for 16x2 and 20x4 LCD displays, including large character rendering and flexible configuration for embedded C applications.
+
+This library minimizes the use of GPIOs by controlling the LCD via I2C, allowing seamless integration with STM32 microcontrollers and the HAL framework.
 
 ## 🚀 Features
 
 - Supports 16x2 and 20x4 character LCDs.
-- Compatible with STM32 HAL library.
-- Utilizes I2C communication via PCF8574 or similar I/O expanders.
-- Functions to control backlight, cursor visibility, blinking, and more.
-- Allows creation of custom characters.
-- Easy integration with STM32CubeMX and STM32CubeIDE.
+- HAL-compatible STM32 driver.
+- Uses PCF8574 or similar I/O expanders over I2C.
+- Supports backlight, cursor, and blink control.
+- Allows big font rendering using custom characters.
+- Compatible with STM32CubeMX and STM32CubeIDE.
+- Easily configurable communication mode (blocking, interrupt, or DMA).
 
 ## 📁 Project Structure
 
-├── Inc/ │ └── lcd_Hd44780I2C.h └──bigFont_lcdI2c.h ├── Src/ │ └── lcd_Hd44780I2C.c └──bigFont_lcdI2c.c ├── docs/ │ └── lcd_demo.jpg ├── README.md └── LICENSE
-
+```
+├── LCD_I2C_STM32_FINAL_A/
+│   ├── lcd_Hd44780I2C.h
+│   └── bigFont_lcdI2c.h
+│   ├── lcd_Hd44780I2C.c
+│   └── bigFont_lcdI2c.c
+├── LCD_I2C_STM32_FINAL_B/
+│   ├── lcd_Hd44780I2C.h
+│   └── bigFont_lcdI2c.h
+│   ├── lcd_Hd44780I2C.c
+│   └── bigFont_lcdI2c.c
+├── Images/
+│   └── LCD_20x4_16x2.png
+│   └── LCD_20x4_Test.pn
+├── README.md
+└── LICENSE
+```
 
 ## 🛠️ Requirements
 
@@ -98,8 +116,18 @@ This library was based on the the following references:
 - https://github.com/johnrickman/LiquidCrystal_I2C
 - [I2C Communication Protocol Overview](https://www.i2c-bus.org)
 
-## 🔖 Tags
-STM32 HD44780 LCD I2C PCF8574 HAL C Microcontroller Display Driver Embedded STM32CubeMX STM32CubeIDE
+## 🔖 Keywords
+
+- STM32
+- HD44780
+- LCD
+- I2C
+- PCF8574
+- HAL
+- Embedded C
+- STM32CubeMX
+- STM32CubeIDE
+- Microcontroller Display Driver
 
 ## 📄 License
 This project is licensed under the GPL V3 License.
