@@ -1,6 +1,6 @@
 # 📟 STM32 I2C Driver for HD44780 LCD
 
-![HD44780 LCD Display](https://github.com/cristobalgc/STM32_LiquidCrystal_I2C/master/images/LCD_20x4_16x2.png)
+![HD44780 LCD Display](Images/LCD_20x4_16x2.png)
 
 This repository provides a C library to interface HD44780-based LCD displays over I2C using STM32 microcontrollers with the HAL library. By utilizing an I/O expander like the PCF8574, this driver minimizes GPIO usage, facilitating efficient LCD control.
 
@@ -85,7 +85,7 @@ int main(void)
 ```
 ## 🖼️ Demonstration
 
-![Test LCD 20x4 ](https://github.com/cristobalgc/STM32_LiquidCrystal_I2C/master/images/LCD_20x4_Test.png)
+![Test LCD 20x4 ](Images/LCD_20x4_Test.png)
 
 ## 📚 References
 
