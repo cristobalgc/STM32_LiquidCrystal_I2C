@@ -26,7 +26,8 @@
 /******************************************************************************/
 /*                      Include headers of the component                      */
 /******************************************************************************/
-#include <lcd_Hd44780I2C.h>
+#include "lcd_Hd44780I2C.h"
+
 #include<stdio.h>
 #include<stdarg.h>
 #include<string.h>
@@ -499,7 +500,6 @@ void LCD_blink(LCD_t *lcd)
 {
 	lcd->Data._displaycontrol |= LCD_BLINKON;
 	lcd_send(lcd, LCD_DISPLAYCONTROL | lcd->Data._displaycontrol, WRITECMD);
-
 }
 
 // These commands scroll the display without changing the RAM

@@ -26,10 +26,11 @@
 /******************************************************************************/
 /*                      Include headers of the component                      */
 /******************************************************************************/
+#include "lcd_Hd44780I2C.h"
 #include <bigFont_lcdI2c.h>
-#include <lcd_Hd44780I2C.h>
 #include <stdio.h>
 #include <string.h>
+
 /******************************************************************************/
 /*                            Include other headers                           */
 /******************************************************************************/
@@ -63,7 +64,7 @@ static const char pbf_lcd_ch6[]={31,31,31,31,31,64,64,0};//6, upper 5 lines
 static const char pbf_lcd_ch7[]={31,31,31,31,31,31,31,31,0};//7, all 7 lines 219
 
 static const char * const pbf_ch_item[] = {pbf_lcd_ch0, pbf_lcd_ch1, pbf_lcd_ch2, pbf_lcd_ch3, pbf_lcd_ch4, pbf_lcd_ch5, pbf_lcd_ch6, pbf_lcd_ch7};
-/* Todo complete the Symbols and updata the documantation */
+/* Todo complete the Symbols and update the documentation */
 static const uint8_t font_35_sym1[]={ 7,0,0,1,0,0, 7,7,0,0,0,0, 2,6,0,0,3,0, 4,6,0,0,3,6, 9,6,4,0,3,0, 0,6,0,0,3,0, 0,6,0,0,3,0, 0,6,0,0,3,0};
 
 static const uint8_t font_35_sym2[]={ 0,1,0,0,4,0, 7,7,0,0,0,0, 2,6,0,0,3,0, 4,6,0,0,3,6, 9,6,4,0,3,0, 0,6,0,0,3,0, 0,6,0,0,3,0, 0,6,0,0,3,0};
@@ -101,34 +102,34 @@ static void bigfont_printTopChar(LCD_t *lcd, char ch)
   {
     for (uint8_t i=0; i<3; i++)
     if (!lcd->Data._invertBigFont) LCD_write(lcd,font_35_09[(ch-'0')*6+i]);
-    else LCD_write(lcd,7-font_35_09[(ch-'0')*6+i]);
+    else LCD_write(lcd, 7-font_35_09[(ch-'0')*6+i]);
   }
   else if ((ch>='A')&&(ch<='Z'))
   {
     for (uint8_t i=0; i<3; i++)
     if (!lcd->Data._invertBigFont) LCD_write(lcd,font_35_AZ[(ch-'A')*6+i]);
-    else  LCD_write(lcd,7-font_35_AZ[(ch-'A')*6+i]);
+    else  LCD_write(lcd, 7-font_35_AZ[(ch-'A')*6+i]);
   }
   else if ((ch>='a')&&(ch<='z'))
   {
     for (uint8_t i=0; i<3; i++)
     if (!lcd->Data._invertBigFont) LCD_write(lcd,font_35_az[(ch-'a')*6+i]);
-    else LCD_write(lcd,7-font_35_az[(ch-'a')*6+i]);
+    else LCD_write(lcd, 7-font_35_az[(ch-'a')*6+i]);
   }
   else if ((ch>='!')&&(ch<='/'))
   {
     for (uint8_t i=0; i<3; i++)
     if (!lcd->Data._invertBigFont) LCD_write(lcd,font_35_sym1[(ch-'!')*6+i]);
-    else LCD_write(lcd,7-font_35_sym1[(ch-'!')*6+i]);
+    else LCD_write(lcd, 7-font_35_sym1[(ch-'!')*6+i]);
   }
   else if ((ch>=':')&&(ch<='@'))
   {
     for (uint8_t i=0; i<3; i++)
     if (!lcd->Data._invertBigFont) LCD_write(lcd,font_35_sym2[(ch-':')*6+i]);
-    else LCD_write(lcd,7-font_35_sym2[(ch-':')*6+i]);
+    else LCD_write(lcd, 7-font_35_sym2[(ch-':')*6+i]);
   }
   if (!lcd->Data._invertBigFont) LCD_write(lcd,' ');
-  else LCD_write(lcd,255);
+  else LCD_write(lcd, 255);
 }
 
 /*
@@ -142,34 +143,34 @@ static void bigfont_printBotChar(LCD_t *lcd, char ch)
 	{
 		for (uint8_t i=0; i<3; i++)
 			if (!lcd->Data._invertBigFont) LCD_write(lcd,font_35_09[(ch-'0')*6+i+3]);
-			else LCD_write(lcd,7-font_35_09[(ch-'0')*6+i+3]);
+			else LCD_write(lcd, 7-font_35_09[(ch-'0')*6+i+3]);
 	}
 	else if ((ch>='A')&&(ch<='Z'))
 	{
 		for (uint8_t i=0; i<3; i++)
 			if (!lcd->Data._invertBigFont) LCD_write(lcd,font_35_AZ[(ch-'A')*6+i+3]);
-			else LCD_write(lcd,7-font_35_AZ[(ch-'A')*6+i+3]);
+			else LCD_write(lcd, 7-font_35_AZ[(ch-'A')*6+i+3]);
 	}
 	else if ((ch>='a')&&(ch<='z'))
 	{
 		for (uint8_t i=0; i<3; i++)
 			if (!lcd->Data._invertBigFont) LCD_write(lcd,font_35_az[(ch-'a')*6+i+3]);
-			else LCD_write(lcd,7-font_35_az[(ch-'a')*6+i+3]);
+			else LCD_write(lcd, 7-font_35_az[(ch-'a')*6+i+3]);
 	}
 	else if ((ch>='!')&&(ch<='/'))
 	{
 		for (uint8_t i=0; i<3; i++)
 			if (!lcd->Data._invertBigFont) LCD_write(lcd,font_35_sym1[(ch-'!')*6+i+3]);
-			else LCD_write(lcd,7-font_35_sym1[(ch-'!')*6+i+3]);
+			else LCD_write(lcd, 7-font_35_sym1[(ch-'!')*6+i+3]);
 	}
 	else if ((ch>=':')&&(ch<='@'))
 	{
 		for (uint8_t i=0; i<3; i++)
 			if (!lcd->Data._invertBigFont) LCD_write(lcd,font_35_sym2[(ch-':')*6+i+3]);
-			else LCD_write(lcd,7-font_35_sym2[(ch-':')*6+i+3]);
+			else LCD_write(lcd, 7-font_35_sym2[(ch-':')*6+i+3]);
 	}
 	if (!lcd->Data._invertBigFont) LCD_write(lcd,' ');
-	else LCD_write(lcd,255);
+	else LCD_write(lcd, 255);
 }
 
 /******************************************************************************/
@@ -178,53 +179,63 @@ static void bigfont_printBotChar(LCD_t *lcd, char ch)
 
 /*
  * @brief Print a a big char on the lcd (only one char)
- *
+ * @param[in] LCD_t *lcd - The lcd object.
+ * @param[in] char ch - The character to be printed.
+ * @param[in] uint8_t loc_x - X position on the LDC.
+ * @param[in] uint8_t loc_y - Y position on the LCD.
  * */
 void BIGFONT_printChar(LCD_t *lcd, char ch, uint8_t loc_x, uint8_t loc_y)
 {
-	LCD_setCursor(lcd,loc_x,loc_y);
-	bigfont_printTopChar(lcd ,ch);
-	LCD_setCursor(lcd,loc_x,loc_y+1);
+	LCD_setCursor(lcd, loc_x, loc_y);
+	bigfont_printTopChar(lcd, ch);
+	LCD_setCursor(lcd, loc_x, loc_y+1);
 	bigfont_printBotChar(lcd, ch);
 }
 
 /*
  * @brief Print a message with big characters on the LCD
- *
+ * @param[in] LCD_t *lcd - The lcd object.
+ * @param[in] char msg - The message to be printed.
+ * @param[in] uint8_t loc_x - X position on the LCD.
+ * @param[in] uint8_t loc_y - Y position on the LCD.
  * */
 void BIGFONT_printMsg(LCD_t *lcd, char msg[], uint8_t loc_x, uint8_t loc_y)
 {
 	uint8_t i = 0;
 	while(msg[i])
 	{
-		BIGFONT_printChar(lcd, msg[i],loc_x+i*4, loc_y);
+		BIGFONT_printChar(lcd, msg[i], loc_x+i*4, loc_y);
 		i++;
 	}
 }
 
 /*
  * @brief Print a number with big characters on the LCD
- *
+ * @param[in] LCD_t *lcd - The lcd object.
+ * @param[in] int number - The number to be printed.
+ * @param[in] uint8_t loc_x - X position on the LCD.
+ * @param[in] uint8_t loc_y - Y position on the LCD.
  * */
 void BIGFONT_printNumber(LCD_t *lcd, int number, uint8_t loc_x, uint8_t loc_y)
 {
 	char msg[11];
 	sprintf(msg,"%d",number);
-	BIGFONT_printMsg(lcd ,msg, loc_x, loc_y);
+	BIGFONT_printMsg(lcd, msg, loc_x, loc_y);
 }
 
 //Display strings stored in PROGMEM. Provide the string name stored in PROGMEM to be displayed on the LCD's current cursor position.
 void big_msg_lcd(LCD_t *lcd, char* msg_line, uint8_t loc_x, uint8_t loc_y)
 {
 	char msg_buffer[17];
-	strcpy(msg_buffer,msg_line);
-	msg_buffer[4]=0;
+	strcpy(msg_buffer, msg_line);
+	msg_buffer[4] = 0;
 	BIGFONT_printMsg(lcd, msg_buffer, loc_x, loc_y);
 }
 
 /*
- * @brief Clear the LCD
+ * @brief Clean the LCD
  *
+ * @param[in] LCD_t *lcd - The lcd object.
  * */
 void BIGFONT_clear(LCD_t *lcd)
 {
@@ -232,16 +243,20 @@ void BIGFONT_clear(LCD_t *lcd)
 	else
 	{
 		LCD_setCursor(lcd, 0, 0);
-		for (uint8_t i=0;i<80;i++)
+		for (uint8_t i=0; i<80; i++)
 		{
-			LCD_write(lcd,255);
+			LCD_write(lcd, 255);
 		}
 	}
 }
 
 /*
- * @brief Invert the characters LCD
+ * @brief Invert the LCD characters 
  *
+ * @param[in] LCD_t *lcd - The lcd object.
+ * @param[in] uint8_t inv - Select if the background of the Lcd is inverted or not.
+ *        				  - \ref inv = 1 Background inverted.
+ *        				  - \ref inv = 0 Normal background.
  * */
 void BIGFONT_invertBackground(LCD_t *lcd, uint8_t inv)
 {
@@ -251,11 +266,12 @@ void BIGFONT_invertBackground(LCD_t *lcd, uint8_t inv)
 /*
  * @brief Initialize the LCD to allow printing characters with big font.
  *
+ * @param[in] LCD_t *lcd - The lcd object.
  * */
 void BIGFONT_init(LCD_t *lcd)
 {
 	uint8_t i;
-	for (i=0;i<8;i++)
+	for (i=0; i<8; i++)
 	{
 		LCD_createChar(lcd, i, pbf_ch_item[i]);
 	}
@@ -264,6 +280,7 @@ void BIGFONT_init(LCD_t *lcd)
 /*
  * @brief Display a custom image on the LCD.
  *
+ * @param[in] LCD_t *lcd - The lcd object.
  * */
 void BIGFONT_printImg(LCD_t *lcd, uint8_t msg[])
 {

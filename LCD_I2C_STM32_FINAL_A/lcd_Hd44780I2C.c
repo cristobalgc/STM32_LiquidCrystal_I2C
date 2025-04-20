@@ -26,10 +26,11 @@
 /******************************************************************************/
 /*                      Include headers of the component                      */
 /******************************************************************************/
-#include <lcd_Hd44780I2C.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
+#include "lcd_Hd44780I2C.h"
+
+#include<stdio.h>
+#include<stdarg.h>
+#include<string.h>
 /******************************************************************************/
 /*                            Include other headers                           */
 /******************************************************************************/
@@ -281,7 +282,7 @@ lcd_error_t LCD_init(LCD_t * lcd, const LCD_cfg_t *config)
 	  lcd_write4bits(lcd, 0x02 << 4);
 
 	// set # lines, font size, etc.
-	  lcd_send(lcd, LCD_FUNCTIONSET | lcd->Data._displayfunction, WRITECMD);
+	lcd_send(lcd, LCD_FUNCTIONSET | lcd->Data._displayfunction, WRITECMD);
 
 	// turn the display on with no cursor or blinking default
 	lcd->Data._displaycontrol = LCD_DISPLAYON | LCD_CURSOROFF | LCD_BLINKOFF;
@@ -333,7 +334,6 @@ void LCD_print(LCD_t * lcd, char* format,...)
 	int32_t i;
 	char *s;
 	uint8_t go_out = 0u;
-
 	//Module 1: Initializing Myprintf's arguments
 	va_list arg;
 	va_start(arg, format);
@@ -486,7 +486,7 @@ void LCD_noAutoscroll(LCD_t *lcd)
 
 // Allows us to fill the first 8 CGRAM locations
 // with custom characters///(maybe it does not work)
-void LCD_createChar(LCD_t *lcd, uint8_t location, uint8_t charmap[])
+void LCD_createChar(LCD_t *lcd, uint8_t location, const char *charmap)
 {
 	int i;
 	location &= 0x07u; // we only have 8 locations 0-7
